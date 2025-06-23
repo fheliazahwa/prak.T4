@@ -1,146 +1,160 @@
 <template>
-  <div class="wrapper">
-    <form @submit.prevent="isEditing ? update() : create()" class="form">
-      <input v-model="form.title" placeholder="Judul artikel" required />
-      <textarea v-model="form.content" placeholder="Isi konten..." required></textarea>
-      <button>{{ isEditing ? '✏️ Update' : '➕ Simpan' }}</button>
-    </form>
+  <div id="app" class="container">
+    <div class="form-box">
+      <input v-model="judul" placeholder="Masukkan judul artikel" />
+      <textarea v-model="isi" placeholder="Masukkan isi artikel"></textarea>
+      
+      <button class="simpan-btn" @click="simpanData">
+        {{ isEdit ? "Update" : "+ Simpan" }}
+      </button>
+      <button class="load-btn" @click="loadData">🔄 Load Data</button>
 
-    <ul class="list">
-      <li v-for="item in articles" :key="item.id" class="card">
-        <h3>{{ item.title }}</h3>
-        <p>{{ item.content }}</p>
-        <div class="actions">
-          <button @click="edit(item)">Edit</button>
-          <button @click="hapus(item.id)">Hapus</button>
-        </div>
-      </li>
-    </ul>
-
-    <button @click="load" class="load-btn">🔄 Load Data</button>
+      <div v-if="artikelList.length" class="output">
+        <h3>Daftar Artikel:</h3>
+        <ul>
+          <li v-for="(artikel, index) in artikelList" :key="index">
+            <strong>{{ artikel.judul }}</strong><br />
+            <p>{{ artikel.isi }}</p>
+            <button class="edit-btn" @click="editArtikel(index)">✏️ Edit</button>
+            <button class="hapus-btn" @click="hapusArtikel(index)">🗑️ Hapus</button>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+<script>
+export default {
+  data() {
+    return {
+      judul: '',
+      isi: '',
+      artikelList: [],
+      isEdit: false,
+      editIndex: null
+    };
+  },
+  mounted() {
+    this.loadData(); // otomatis load saat halaman dibuka
+  },
+  methods: {
+    simpanData() {
+      if (!this.judul.trim() || !this.isi.trim()) {
+        alert('Mohon isi semua kolom!');
+        return;
+      }
 
-const API = 'http://localhost:3000/articles'
+      const artikelBaru = {
+        judul: this.judul,
+        isi: this.isi
+      };
 
-const articles = ref([])
-const form = ref({ title: '', content: '' })
-const isEditing = ref(false)
-const editingId = ref(null)
+      if (this.isEdit) {
+        // Update data
+        this.artikelList[this.editIndex] = artikelBaru;
+        this.isEdit = false;
+        this.editIndex = null;
+      } else {
+        // Tambah data baru
+        this.artikelList.push(artikelBaru);
+      }
 
-onMounted(load)
-
-function load() {
-  axios.get(API).then(res => {
-    articles.value = res.data
-  })
-}
-
-function create() {
-  axios.post(API, form.value).then(() => {
-    form.value = { title: '', content: '' }
-    load()
-  })
-}
-
-function edit(item) {
-  form.value = { title: item.title, content: item.content }
-  editingId.value = item.id
-  isEditing.value = true
-}
-
-function update() {
-  axios.put(`${API}/${editingId.value}`, form.value).then(() => {
-    form.value = { title: '', content: '' }
-    isEditing.value = false
-    editingId.value = null
-    load()
-  })
-}
-
-function hapus(id) {
-  axios.delete(`${API}/${id}`).then(load)
-}
+      this.simpanKeStorage();
+      this.judul = '';
+      this.isi = '';
+    },
+    loadData() {
+      const data = localStorage.getItem('artikelList');
+      if (data) {
+        this.artikelList = JSON.parse(data);
+      }
+    },
+    simpanKeStorage() {
+      localStorage.setItem('artikelList', JSON.stringify(this.artikelList));
+    },
+    hapusArtikel(index) {
+      if (confirm('Yakin ingin menghapus artikel ini?')) {
+        this.artikelList.splice(index, 1);
+        this.simpanKeStorage();
+      }
+    },
+    editArtikel(index) {
+      this.judul = this.artikelList[index].judul;
+      this.isi = this.artikelList[index].isi;
+      this.isEdit = true;
+      this.editIndex = index;
+    }
+  }
+};
 </script>
 
 <style scoped>
-.wrapper {
-  width: 100%;
-  max-width: 500px;
-  background: #fff;
-  padding: 24px;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-}
-.form {
+.container {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #f5f7fb;
+  font-family: 'Inter', sans-serif;
 }
-.form input,
-.form textarea {
-  padding: 10px 14px;
-  border: 1px solid #ccc;
+.form-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  width: 320px;
+}
+input,
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
   border-radius: 8px;
-  font-size: 16px;
+  border: 1px solid #ccc;
+  font-size: 14px;
 }
-.form button {
-  background-color: #3498db;
-  color: white;
+button {
+  width: 100%;
   padding: 10px;
   border: none;
-  border-radius: 8px;
   font-weight: bold;
-  cursor: pointer;
-}
-.list {
-  list-style: none;
-  padding: 0;
-  margin: 20px 0;
-}
-.card {
-  background: #f1f3f6;
-  padding: 14px;
-  margin-bottom: 12px;
-  border-radius: 10px;
-}
-.card h3 {
-  margin: 0;
-  font-weight: 600;
-}
-.card p {
-  margin: 5px 0 0;
-}
-.actions {
+  border-radius: 8px;
   margin-top: 10px;
-  display: flex;
-  gap: 10px;
-}
-.actions button {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
   cursor: pointer;
 }
-.actions button:first-child {
-  background-color: #f1c40f;
-}
-.actions button:last-child {
-  background-color: #e74c3c;
+.simpan-btn {
+  background-color: #3b82f6;
   color: white;
 }
 .load-btn {
-  margin-top: 12px;
-  background-color: #2ecc71;
+  background-color: #10b981;
   color: white;
-  border: none;
-  padding: 10px 20px;
-  font-weight: bold;
+}
+.edit-btn {
+  background-color: #f59e0b;
+  color: white;
+  margin-top: 5px;
+  width: 49%;
+}
+.hapus-btn {
+  background-color: #ef4444;
+  color: white;
+  margin-top: 5px;
+  width: 49%;
+  float: right;
+}
+.output {
+  margin-top: 20px;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  background: #f1f5f9;
+  padding: 10px;
   border-radius: 8px;
-  cursor: pointer;
+  margin-bottom: 10px;
 }
 </style>
